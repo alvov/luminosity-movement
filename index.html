@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Bobby is RADICAL</title>
+</head>
+<body>
+	<style>
+        html,
+        body {
+            height: 100%;
+        }
+        body {
+            min-height: 100%;
+            text-align: center;
+        }
+        body:before {
+            content: '';
+            display: inline-block;
+            height: 100%;
+            vertical-align: middle; 
+        }
+		video {
+			display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+		}
+		canvas {
+			position: absolute;
+		}
+		#video-replica {
+			display: none;
+			top: 10px;
+			right: 10px;
+		}
+		#light-map {
+            display: none;
+			bottom: 10px;
+			right: 10px;
+		}
+        
+        .dots {
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 0;
+        }
+        .dots > div {
+            display: inline-block;
+            border-radius: 50%;
+            transform: scale(0);
+        }
+        
+        .controls {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            text-align: left;
+            font: 12px Arial, sans-serif;
+        }
+            .controls .group {
+                margin: 0 0 10px;
+            }
+            .controls label {
+                display: block;
+            }
+	</style>
+	
+	<video autoplay></video>
+	
+	<div class="dots"></div>
+	
+	<div class="controls">
+        <div class="group">
+            <label for="sensitivity">Sensitivity</label>
+            <input id="sensitivity" type="range" min="1" max="15"/>
+        </div>
+        <div class="group">
+            <label for="scale">Size</label>
+            <input id="scale" type="range" min="5" max="15"/>
+        </div>
+        <div class="group">
+            <label for="speed">Speed</label>
+            <input id="speed" type="range" min="1" max="10"/>
+        </div>
+	</div>
+	
+	<script src="luminosity.js"></script>
+	<script>
+		(function(){
+			var video = document.querySelector('video');
+            var dotsContainer = document.querySelector('.dots');
+            var dots = [];
+            var dotsRow;
+            var dot;
+            var VIDEO_SIZE = [120, 90];
+            var CELL_SIZE = [5, 5];
+            var DOT_SIZE = 20;
+            var cellsCount = VIDEO_SIZE.map(function(value, index){
+                return Math.floor(value / CELL_SIZE[index]);
+            });
+            var oldMap;
+            
+            video.setAttribute('width', VIDEO_SIZE[0]);
+            video.setAttribute('height', VIDEO_SIZE[1]);
+            
+            // input params
+            var sensitivity = 10;
+            var sensitivityInput = document.querySelector('#sensitivity');
+            sensitivityInput.addEventListener('change', function(){
+                sensitivity = Number(this.value);
+            });
+            sensitivityInput.value = sensitivity;
+            
+            var maxScale = 1.5;
+            var scaleInput = document.querySelector('#scale')
+            scaleInput.addEventListener('change', function(){
+                maxScale = Number(this.value) / 10;
+            });
+            scaleInput.value = Number(maxScale * 10);
+            
+            var speed = 0.06;
+            var speedInput = document.querySelector('#speed')
+            speedInput.addEventListener('change', function(){
+                speed = Number(this.value) / 100;
+            });
+            speedInput.value = Number(speed * 100);
+            // input params end
+            
+            dotsContainer.style.width = cellsCount[0] * DOT_SIZE + 'px';
+            // create dots
+            for (var i = 0; i < cellsCount[1]; i++) {
+                dotsRow = [];
+                for (var j = 0; j < cellsCount[0]; j++) {
+                    dot = document.createElement('div');
+                    dot.style.width = DOT_SIZE + 'px';
+                    dot.style.height = DOT_SIZE + 'px';
+                    dotsContainer.appendChild(dot);
+                    dotsRow.push({
+                        elem: dot
+                    });
+                }
+                dots.push(dotsRow);
+            }
+            
+            var luminosity = new Luminosity({
+                video: video,
+                cellSize: CELL_SIZE
+            });
+            luminosity
+                .addHandler(function(map, lightness){
+                    map.forEach(function(row, i){
+                        row.forEach(function(cell, j){
+                            if (oldMap) {
+                                if (Math.abs(oldMap[i][j].lightness - cell.lightness) > sensitivity) {
+                                    cell.scale = maxScale;
+                                    dots[i][j].elem.style.transform = 'scale(' + cell.scale + ')';
+                                } else if (oldMap[i][j].scale) {
+                                    cell.scale = Math.max(0, oldMap[i][j].scale - speed);
+                                    dots[i][j].elem.style.transform = 'scale(' + cell.scale + ')';
+                                }
+                            }
+                            dots[i][j].elem.style.backgroundColor =
+                                'rgb(' + [cell.lightness, 0, 255 - cell.lightness].join(',') + ')';
+                        });
+                    });
+                    oldMap = map;
+                })
+                .run();            
+		})();
+	</script>
+</body>
+</html>
